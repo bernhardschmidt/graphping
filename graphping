@@ -23,7 +23,6 @@ Requires: fping, python-daemon
 import sys
 import os
 import signal
-import daemon
 import subprocess
 import re
 import logging
@@ -233,6 +232,7 @@ if __name__ == "__main__":
     app.process_options()
 
     if app.daemonize == True:
+        import daemon
         context = daemon.DaemonContext()
         context.signal_map = {
             signal.SIGTERM: handle_signal,
