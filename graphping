@@ -31,19 +31,9 @@ import errno
 import time
 import socket
 import datetime
+import argparse
+import tomllib
 from pprint import pprint, pformat
-
-# number of ping packets to send
-packets = 30
-
-# Graphite
-g_host = 'localhost'
-g_port = 2003
-g_prefix = 'ping'
-
-# System
-fping = '/usr/sbin/fping'
-logfile = '/tmp/graphping.log'
 
 def handle_signal (sig, _frame):
     app.logger.info ("Received signal (%s)" % signal.Signals(sig).name)
@@ -78,13 +68,14 @@ class StreamToLogger(object):
 class App:
 
     def __init__(self):
-        self.g_host = g_host
-        self.g_port = g_port
-        self.g_prefix = g_prefix
-        self.logfile = logfile
+        self.g_host = 'localhost'
+        self.g_port = 2003
+        self.g_prefix = 'ping'
+        self.logfile = None
         self.daemonize = True
         self.stop = False
         self.level = logging.INFO
+        self.packets = 30
 
     def setup_logging(self):
         os.umask(0o022)
@@ -122,9 +113,34 @@ class App:
             return srtd[mid]
 
     def process_options(self):
-        self.targets = sys.argv[1:]
-        if not self.targets:
-            self.usage()
+        parser = argparse.ArgumentParser(
+                prog='graphping',
+                description='Send ping statistics for multiple hosts to Graphite')
+        parser.add_argument('--host', default='localhost')
+        parser.add_argument('--port', type=int, default=2003)
+        parser.add_argument('--prefix', default='ping')
+        parser.add_argument('--daemon', action='store_true')
+        parser.add_argument('--fping', default='/usr/bin/fping')
+        parser.add_argument('--logfile', default='/tmp/graphping.log')
+        parser.add_argument('--packets', type=int, default=30)
+        parser.add_argument('--config', type=str)
+        parser.add_argument('target', nargs='+')
+        args = parser.parse_args()
+
+        if args.config:
+            with open(args.config, "rb") as f:
+                config = tomllib.load(f)
+            parser.set_defaults(**config)
+            args = parser.parse_args()
+
+        self.g_host = args.host
+        self.g_port = args.port
+        self.g_prefix = args.prefix
+        self.daemonize = args.daemon
+        self.fping = args.fping
+        self.packets = args.packets
+        self.logfile = args.logfile
+        self.targets = args.target
 
     def usage(self):
         print("Usage: ping-graphite <target> [<target> ...]")
@@ -133,7 +149,7 @@ class App:
     def main(self):
 
         if self.setup_logging():
-            cmd = [ fping, '-c', str(packets) ] + self.targets
+            cmd = [ self.fping, '-c', str(self.packets) ] + self.targets
 
             while not self.stop:
 
@@ -143,7 +159,7 @@ class App:
                     rtt[t] = []
                     sry[t] = {}
 
-                self.logger.info("Fpinging %d targets x %d packets" % (len(self.targets), packets))
+                self.logger.info("Fpinging %d targets x %d packets" % (len(self.targets), self.packets))
                 self.ping = subprocess.Popen(cmd, bufsize=256, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 while not self.stop:
                     # A USR1 signal causes an 'Interrupted system call' that we should
@@ -193,7 +209,7 @@ class App:
                 # Process and send the results
                 ts = time.time()
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.connect((g_host, g_port))
+                s.connect((self.g_host, self.g_port))
 
                 for target,summary in sry.items():
                     safe_target = target.replace('.', '_')
