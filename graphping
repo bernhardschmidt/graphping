@@ -110,6 +110,7 @@ class App:
         parser.add_argument('--fping', default='/usr/bin/fping')
         parser.add_argument('--logfile', default='/tmp/graphping.log')
         parser.add_argument('--packets', type=int, default=30)
+        parser.add_argument('--pktsize', type=int, default=1000)
         parser.add_argument('--config', type=str)
         parser.add_argument('target', nargs='+')
         args = parser.parse_args()
@@ -126,6 +127,7 @@ class App:
         self.daemonize = args.daemon
         self.fping = args.fping
         self.packets = args.packets
+        self.pktsize = args.pktsize
         self.logfile = args.logfile
         self.targets = args.target
 
@@ -136,7 +138,7 @@ class App:
     def main(self):
 
         if self.setup_logging():
-            cmd = [ self.fping, '-c', str(self.packets) ] + self.targets
+            cmd = [ self.fping, '-c', str(self.packets), '-b', str(self.pktsize), '-p', '100', ] + self.targets
 
             while not self.stop:
 
