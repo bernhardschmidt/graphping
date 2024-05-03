@@ -34,6 +34,7 @@ import datetime
 import statistics
 import argparse
 import tomllib
+from threading import Event
 from pprint import pprint, pformat
 
 def handle_signal (sig, _frame):
@@ -51,7 +52,7 @@ def handle_signal (sig, _frame):
         else:
             app.logger.warning("No ping running.")
         app.ping = False
-        app.stop = True
+        app.stop.set()
 
 class StreamToLogger(object):
     """
@@ -69,7 +70,7 @@ class StreamToLogger(object):
 class App:
 
     def __init__(self):
-        self.stop = False
+        self.stop = Event()
         self.level = logging.INFO
 
     def setup_logging(self):
@@ -140,7 +141,7 @@ class App:
         if self.setup_logging():
             cmd = [ self.fping, '-c', str(self.packets), '-b', str(self.pktsize), '-p', '100', ] + self.targets
 
-            while not self.stop:
+            while not self.stop.is_set():
 
                 rtt = {}
                 sry = {}
@@ -150,7 +151,7 @@ class App:
 
                 self.logger.info("Fpinging %d targets x %d packets" % (len(self.targets), self.packets))
                 self.ping = subprocess.Popen(cmd, bufsize=256, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                while not self.stop:
+                while not self.stop.is_set():
                     # A USR1 signal causes an 'Interrupted system call' that we should
                     # handle gracefully
                     try:
@@ -192,7 +193,7 @@ class App:
                 self.ping = False
 
                 # Escape
-                if self.stop:
+                if self.stop.is_set():
                     return
 
                 # Process and send the results
@@ -225,10 +226,9 @@ class App:
                 s.close()
 
                 # Wait for the next minute
-                self.logger.info("Sleeping")
-                m0 = time.strftime('%M')
-                while time.strftime('%M') == m0 and not self.stop:
-                    time.sleep(3)
+                m0 = 60 - time.gmtime().tm_sec
+                self.logger.info("Sleeping for %d seconds" % m0)
+                self.stop.wait(m0)
 
             return
 
