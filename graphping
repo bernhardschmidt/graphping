@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 #   Copyright 2013 Martijn Grendelman <m@rtijn.net>
 #
@@ -89,14 +89,14 @@ class App:
         self.level = logging.INFO
 
     def setup_logging(self):
-        os.umask(022)
+        os.umask(0o022)
         self.logger = logging.getLogger()
         self.logger.setLevel(self.level)
         formatter = logging.Formatter('%(asctime)s [%(process)d] %(levelname)s: %(message)s','%Y-%m-%d %H:%M:%S')
         try:
             loghandler = logging.handlers.WatchedFileHandler(self.logfile)
         except IOError:
-            print "Could not open logfile (%s)" % self.logfile
+            print("Could not open logfile (%s)" % self.logfile)
             return False
 
         loghandler.setFormatter(formatter)
@@ -117,7 +117,7 @@ class App:
 
     def median(self, alist):
         srtd = sorted(alist) # returns a sorted copy
-        mid = len(alist)/2   # remember that integer division truncates
+        mid = len(alist)//2  # remember that integer division truncates
         if len(alist) % 2 == 0:  # take the avg of middle two
             return (srtd[mid-1] + srtd[mid]) / 2.0
         else:
@@ -129,7 +129,7 @@ class App:
             self.usage()
 
     def usage(self):
-        print "Usage: ping-graphite <target> [<target> ...]"
+        print("Usage: ping-graphite <target> [<target> ...]")
         sys.exit(2)
 
     def main(self):
@@ -151,8 +151,8 @@ class App:
                     # A USR1 signal causes an 'Interrupted system call' that we should
                     # handle gracefully
                     try:
-                        raw_line = self.ping.stdout.readline()
-                    except IOError, e:
+                        raw_line = self.ping.stdout.readline().decode('UTF-8')
+                    except IOError as e:
                         if e.errno == errno.EINTR:
                             continue
 
@@ -208,12 +208,12 @@ class App:
                     try:
                         self.logger.info("Sending data for %s. ts=%d => %s" % (safe_target, ts,
                             datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')))
-                        s.send("%s %d %d\n" % (m_loss, summary['loss'], ts))
-                        s.send("%s %.2f %d\n" % (m_median, self.median(rtt[target]), ts))
-                        s.send("%s %.2f %d\n" % (m_min, summary['min'], ts))
-                        s.send("%s %.2f %d\n" % (m_avg, summary['avg'], ts))
-                        s.send("%s %.2f %d\n" % (m_max, summary['max'], ts))
-                    except Exception:
+                        s.send(("%s %d %d\n" % (m_loss, summary['loss'], ts)).encode('ASCII'))
+                        s.send(("%s %.2f %d\n" % (m_median, self.median(rtt[target]), ts)).encode('ASCII'))
+                        s.send(("%s %.2f %d\n" % (m_min, summary['min'], ts)).encode('ASCII'))
+                        s.send(("%s %.2f %d\n" % (m_avg, summary['avg'], ts)).encode('ASCII'))
+                        s.send(("%s %.2f %d\n" % (m_max, summary['max'], ts)).encode('ASCII'))
+                    except Exception as e:
                         self.logger.info("Could not send! Summary:")
                         self.logger.info(pformat(summary))
 
