@@ -31,6 +31,7 @@ import errno
 import time
 import socket
 import datetime
+import statistics
 import argparse
 import tomllib
 from pprint import pprint, pformat
@@ -103,14 +104,6 @@ class App:
             self.logger.addHandler(loghandler2)
 
         return True
-
-    def median(self, alist):
-        srtd = sorted(alist) # returns a sorted copy
-        mid = len(alist)//2  # remember that integer division truncates
-        if len(alist) % 2 == 0:  # take the avg of middle two
-            return (srtd[mid-1] + srtd[mid]) / 2.0
-        else:
-            return srtd[mid]
 
     def process_options(self):
         parser = argparse.ArgumentParser(
@@ -215,6 +208,7 @@ class App:
                     safe_target = target.replace('.', '_')
                     m_loss = self.g_prefix + '.' + safe_target + '.packetloss'
                     m_median = self.g_prefix + '.' + safe_target + '.medianrtt'
+                    m_stdev = self.g_prefix + '.' + safe_target + '.stdevrtt'
                     m_min = self.g_prefix + '.' + safe_target + '.minrtt'
                     m_avg = self.g_prefix + '.' + safe_target + '.avgrtt'
                     m_max = self.g_prefix + '.' + safe_target + '.maxrtt'
@@ -223,7 +217,8 @@ class App:
                         self.logger.info("Sending data for %s. ts=%d => %s" % (safe_target, ts,
                             datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')))
                         s.send(("%s %d %d\n" % (m_loss, summary['loss'], ts)).encode('ASCII'))
-                        s.send(("%s %.2f %d\n" % (m_median, self.median(rtt[target]), ts)).encode('ASCII'))
+                        s.send(("%s %.2f %d\n" % (m_median, statistics.median(rtt[target]), ts)).encode('ASCII'))
+                        s.send(("%s %.2f %d\n" % (m_stdev, statistics.stdev(rtt[target]), ts)).encode('ASCII'))
                         s.send(("%s %.2f %d\n" % (m_min, summary['min'], ts)).encode('ASCII'))
                         s.send(("%s %.2f %d\n" % (m_avg, summary['avg'], ts)).encode('ASCII'))
                         s.send(("%s %.2f %d\n" % (m_max, summary['max'], ts)).encode('ASCII'))
