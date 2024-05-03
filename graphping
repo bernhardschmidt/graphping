@@ -69,14 +69,8 @@ class StreamToLogger(object):
 class App:
 
     def __init__(self):
-        self.g_host = 'localhost'
-        self.g_port = 2003
-        self.g_prefix = 'ping'
-        self.logfile = None
-        self.daemonize = True
         self.stop = False
         self.level = logging.INFO
-        self.packets = 30
 
     def setup_logging(self):
         os.umask(0o022)
