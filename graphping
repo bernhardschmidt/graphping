@@ -198,32 +198,42 @@ class App:
 
                 # Process and send the results
                 ts = time.time()
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.connect((self.g_host, self.g_port))
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.connect((self.g_host, self.g_port))
 
-                for target,summary in sry.items():
-                    safe_target = target.replace('.', '_')
-                    m_loss = self.g_prefix + '.' + safe_target + '.packetloss'
-                    m_median = self.g_prefix + '.' + safe_target + '.medianrtt'
-                    m_stdev = self.g_prefix + '.' + safe_target + '.stdevrtt'
-                    m_min = self.g_prefix + '.' + safe_target + '.minrtt'
-                    m_avg = self.g_prefix + '.' + safe_target + '.avgrtt'
-                    m_max = self.g_prefix + '.' + safe_target + '.maxrtt'
+                    for target,summary in sry.items():
+                        if not 'loss' in summary:
+                            self.logger.info("No result for target %s" % target)
+                            continue
 
-                    try:
-                        self.logger.info("Sending data for %s. ts=%d => %s" % (safe_target, ts,
-                            datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')))
-                        s.send(("%s %d %d\n" % (m_loss, summary['loss'], ts)).encode('ASCII'))
-                        s.send(("%s %.2f %d\n" % (m_median, statistics.median(rtt[target]), ts)).encode('ASCII'))
-                        s.send(("%s %.2f %d\n" % (m_stdev, statistics.stdev(rtt[target]), ts)).encode('ASCII'))
-                        s.send(("%s %.2f %d\n" % (m_min, summary['min'], ts)).encode('ASCII'))
-                        s.send(("%s %.2f %d\n" % (m_avg, summary['avg'], ts)).encode('ASCII'))
-                        s.send(("%s %.2f %d\n" % (m_max, summary['max'], ts)).encode('ASCII'))
-                    except Exception as e:
-                        self.logger.info("Could not send! Summary:")
-                        self.logger.info(pformat(summary))
+                        safe_target = target.replace('.', '_')
+                        m_loss = self.g_prefix + '.' + safe_target + '.packetloss'
+                        m_median = self.g_prefix + '.' + safe_target + '.medianrtt'
+                        m_stdev = self.g_prefix + '.' + safe_target + '.stdevrtt'
+                        m_min = self.g_prefix + '.' + safe_target + '.minrtt'
+                        m_avg = self.g_prefix + '.' + safe_target + '.avgrtt'
+                        m_max = self.g_prefix + '.' + safe_target + '.maxrtt'
 
-                s.close()
+                        try:
+                            self.logger.info("Sending data for %s. ts=%d => %s" % (safe_target, ts,
+                                datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')))
+                            s.send(("%s %d %d\n" % (m_loss, summary['loss'], ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_median, statistics.median(rtt[target]), ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_stdev, statistics.stdev(rtt[target]), ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_min, summary['min'], ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_avg, summary['avg'], ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_max, summary['max'], ts)).encode('ASCII'))
+                        except Exception as e:
+                            self.logger.info("Could not send! Summary:")
+                            self.logger.info(pformat(summary))
+
+                    s.close()
+                except Exception as e:
+                    self.logger.warning("Could not connect to Graphite host %s:%s: %s" % (
+                        self.g_host,
+                        self.g_port,
+                        e))
 
                 # Wait for the next minute
                 m0 = 60 - time.gmtime().tm_sec
