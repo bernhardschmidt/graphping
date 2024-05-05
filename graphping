@@ -219,11 +219,11 @@ class App:
                             self.logger.info("Sending data for %s. ts=%d => %s" % (safe_target, ts,
                                 datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')))
                             s.send(("%s %d %d\n" % (m_loss, summary['loss'], ts)).encode('ASCII'))
-                            s.send(("%s %.2f %d\n" % (m_median, statistics.median(rtt[target]), ts)).encode('ASCII'))
-                            s.send(("%s %.2f %d\n" % (m_stdev, statistics.stdev(rtt[target]), ts)).encode('ASCII'))
                             s.send(("%s %.2f %d\n" % (m_min, summary['min'], ts)).encode('ASCII'))
                             s.send(("%s %.2f %d\n" % (m_avg, summary['avg'], ts)).encode('ASCII'))
                             s.send(("%s %.2f %d\n" % (m_max, summary['max'], ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_median, statistics.median(rtt[target]), ts)).encode('ASCII'))
+                            s.send(("%s %.2f %d\n" % (m_stdev, statistics.stdev(rtt[target]), ts)).encode('ASCII'))
                         except Exception as e:
                             self.logger.info("Could not send! Summary:")
                             self.logger.info(pformat(summary))
